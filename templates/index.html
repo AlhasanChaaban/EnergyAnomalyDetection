@@ -11,11 +11,16 @@
     <h1>Energy Anomaly Detection</h1>
     <canvas id="dataChart" width="600" height="400"></canvas>
     <script>
-        fetch('/data')
-            .then(response => response.json())
-            .then(data => {
-                const ctx = document.getElementById('dataChart').getContext('2d');
-                new Chart(ctx, {
+        const ctx = document.getElementById('dataChart').getContext('2d');
+        let chart;
+
+        function updateChart(data) {
+            if (chart) {
+                chart.data.labels = data.time;
+                chart.data.datasets[0].data = data.data;
+                chart.update();
+            } else {
+                chart = new Chart(ctx, {
                     type: 'line',
                     data: {
                         labels: data.time,
@@ -34,7 +39,18 @@
                         }
                     }
                 });
-            });
+            }
+        }
+
+        function fetchData() {
+            fetch('/data')
+                .then(response => response.json())
+                .then(data => updateChart(data));
+        }
+
+        
+        fetchData();
+        setInterval(fetchData, 60000); 
     </script>
 </body>
 </html>
