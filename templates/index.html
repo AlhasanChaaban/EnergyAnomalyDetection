@@ -48,42 +48,64 @@
             marker: { size: 8, color: 'red' }
         };
 
+        Plotly.newPlot('dataChart', [data, anomalyData], {
+            scene: {
+                xaxis: { title: 'Temperature' },
+                yaxis: { title: 'Humidity' },
+                zaxis: { title: 'Power Demand' }
+            },
+            margin: {
+                l: 0,
+                r: 0,
+                b: 0,
+                t: 0
+            }
+        });
+
         function updatePlot(newRows, anomalies) {
-            newRows.forEach((row, index) => {
-                data.x.push(row[0]);
-                data.y.push(row[1]);
-                data.z.push(row[2]);
+            if (!Array.isArray(newRows) || !Array.isArray(anomalies) || newRows.length !== anomalies.length) {
+                console.error('Invalid data format');
+                return;
+            }
 
-                if (anomalies[index]) {
-                    anomalyData.x.push(row[0]);
-                    anomalyData.y.push(row[1]);
-                    anomalyData.z.push(row[2]);
-                }
-            });
-
-            const layout = {
-                scene: {
-                    xaxis: { title: 'Temperature' },
-                    yaxis: { title: 'Humidity' },
-                    zaxis: { title: 'Power Demand' }
-                },
-                margin: {
-                    l: 0,
-                    r: 0,
-                    b: 0,
-                    t: 0
-                }
+            // Extract new data points and anomaly data
+            const newData = {
+                x: newRows.map(row => row[0]),
+                y: newRows.map(row => row[1]),
+                z: newRows.map(row => row[2])
             };
 
-            Plotly.react('dataChart', [data, anomalyData], layout);
+            const anomalyPoints = {
+                x: newRows.filter((_, index) => anomalies[index]).map(row => row[0]),
+                y: newRows.filter((_, index) => anomalies[index]).map(row => row[1]),
+                z: newRows.filter((_, index) => anomalies[index]).map(row => row[2])
+            };
+
+            // Update plot with new data
+            Plotly.extendTraces('dataChart', {
+                x: [newData.x],
+                y: [newData.y],
+                z: [newData.z]
+            }, [0]);
+
+            Plotly.extendTraces('dataChart', {
+                x: [anomalyPoints.x],
+                y: [anomalyPoints.y],
+                z: [anomalyPoints.z]
+            }, [1]);
         }
 
         function fetchData() {
             fetch('/stream_data')
                 .then(response => response.json())
                 .then(data => {
+                    if (data.error) {
+                        console.error('Server error:', data.error);
+                        return;
+                    }
                     updatePlot(data.new_rows, data.anomalies);
-                });
+                })
+                .catch(error => console.error('Error fetching data:', error));
         }
 
         setInterval(fetchData, 3000);
