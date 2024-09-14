@@ -5,52 +5,88 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Energy Anomaly Detection</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .chart-container {
+            width: 90%;
+            height: 90%;
+            padding: 20px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Energy Anomaly Detection</h1>
-    <canvas id="dataChart" width="600" height="400"></canvas>
+    <div class="chart-container">
+        <div id="dataChart"></div>
+    </div>
     <script>
-        const ctx = document.getElementById('dataChart').getContext('2d');
-        let chart;
+        let data = {
+            x: [],
+            y: [],
+            z: [],
+            mode: 'markers',
+            type: 'scatter3d',
+            marker: { size: 5 }
+        };
 
-        function updateChart(data) {
-            if (chart) {
-                chart.data.labels = data.time;
-                chart.data.datasets[0].data = data.data;
-                chart.update();
-            } else {
-                chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: data.time,
-                        datasets: [{
-                            label: 'Simulated Energy Data',
-                            data: data.data,
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 1,
-                            fill: false
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            x: { type: 'linear', position: 'bottom' },
-                            y: { beginAtZero: true }
-                        }
-                    }
-                });
-            }
+        let anomalyData = {
+            x: [],
+            y: [],
+            z: [],
+            mode: 'markers',
+            type: 'scatter3d',
+            marker: { size: 8, color: 'red' }
+        };
+
+        function updatePlot(newRows, anomalies) {
+            newRows.forEach((row, index) => {
+                data.x.push(row[0]);
+                data.y.push(row[1]);
+                data.z.push(row[2]);
+
+                if (anomalies[index]) {
+                    anomalyData.x.push(row[0]);
+                    anomalyData.y.push(row[1]);
+                    anomalyData.z.push(row[2]);
+                }
+            });
+
+            const layout = {
+                scene: {
+                    xaxis: { title: 'Temperature' },
+                    yaxis: { title: 'Humidity' },
+                    zaxis: { title: 'Power Demand' }
+                },
+                margin: {
+                    l: 0,
+                    r: 0,
+                    b: 0,
+                    t: 0
+                }
+            };
+
+            Plotly.react('dataChart', [data, anomalyData], layout);
         }
 
         function fetchData() {
-            fetch('/data')
+            fetch('/stream_data')
                 .then(response => response.json())
-                .then(data => updateChart(data));
+                .then(data => {
+                    updatePlot(data.new_rows, data.anomalies);
+                });
         }
 
-        
-        fetchData();
-        setInterval(fetchData, 60000); 
+        setInterval(fetchData, 3000);
     </script>
 </body>
 </html>
